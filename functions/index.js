@@ -203,6 +203,36 @@ app.get('/v1/provinces/:id',(request, response)=>{
 })
 // -----------------------------------------
 // -------------- Post -------------------
+// ---- Dogs ----
+app.post('/v1/dogs', (request, response)=>{
+    (async ()=>{
+        try{
+            db.runTransaction( async (t)=>{
+                const addedDog = await db.collection('dogs').add(
+                    {
+                        name: request.body.name,
+                        birthDay: request.body.birthDay,
+                        specialMeat: request.body.specialMeat,
+                        breed: request.body.breed,
+                        personality: request.body.personality,
+                        vaccinesApplied: request.body.vaccinesApplied                   
+                    }
+                )
+                const addRelation = db.collection('users-dogs').add(
+                    {
+                        user:request.body.owner,
+                        dog: addedDog.id,
+                        relationType:"O" 
+                    }
+                )
+            })
+        }catch(error){
+
+        }
+    })();
+})
+
+
 // ---- Users ---
 app.post('/v1/users', (request, response)=>{
     (async ()=>{
