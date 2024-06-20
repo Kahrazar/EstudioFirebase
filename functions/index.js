@@ -202,8 +202,79 @@ app.get('/v1/provinces/:id',(request, response)=>{
     })();
 })
 // -----------------------------------------
+// ---- Dogs ---
+
+/* 
+    This method returns all the dogs liked by an specific user
+*/
+app.get('/v1/dogs/like/:user',(request, response)=>{
+    (async ()=>{
+        try{
+            db.runTransaction(async (t)=>{
+                // First, get the id of all the dogs liked by the user
+                const query = db.collection('users-dogs')
+                .where('relationType','==','L')
+                .where('user','==',request.params.user);
+
+                let ids = []
+                let dogsPromises = []
+                let returnDogs = []
+
+                // Send query to database
+                const snapshot = await query.get() 
+
+                if(snapshot.empty){
+                    console.log("No matching results.")
+                    return response.status(200).send()
+                }
+
+                // Get all liked dogs id
+                snapshot.forEach(row=>{
+                    let data = row.data()
+                    ids.push(data.dog)
+                })
+              
+                // Get the reference for every dog that has been liked by the user
+               ids.forEach(id=>{
+                    dogsPromises.push(db.collection('dogs').doc(id).get())                
+                })
+
+                // wait for promises to fulfill and get the information for each dog found
+                Promise.all(dogsPromises).then(
+                    resolved=>resolved.forEach(dog=>returnDogs.push(dog.data())/*dog=>{ returnDogs.push(dog.data())}*/ )
+                )
+                console.log(returnDogs)
+                return response.status(200).send(returnDogs)
+            })
+        }catch(error){
+            return response.status(500).send(error)
+        }
+    }
+    )();
+})
+
+
 // -------------- Post -------------------
 // ---- Dogs ----
+app.post('/v1/dogs/:id/like', (request, response)=>{
+    (async ()=>{
+        try{
+            await db.collection('users-dogs').add(
+                {
+                    user:request.body.user,
+                    dog: request.params.id,
+                    relationType:"L" // L stands for Like
+                }
+            )
+            return response.status(200).send("Dog has been liked successfully")
+        }catch(error){
+            return response.status(500).send(error)
+        }
+
+    })();
+})
+
+
 app.post('/v1/dogs', (request, response)=>{
     (async ()=>{
         try{
@@ -226,8 +297,9 @@ app.post('/v1/dogs', (request, response)=>{
                     }
                 )
             })
+            return response.status(200).send()
         }catch(error){
-
+            return response.status(500).send(error)
         }
     })();
 })
@@ -240,7 +312,7 @@ app.post('/v1/users', (request, response)=>{
        
             await db.collection('users').doc('/' + request.body.id + '/')
                 .create(
-                    {
+                    { 
                       name: request.body.name,
                       lastname: request.body.lastname,
                       mail:request.body.mail,
@@ -498,7 +570,6 @@ app.delete('/v1/provinces/:id', (request, response) =>{
     })();
 })
 // -----------------------
-
 
 // ----------------------
 // Export api to Firebase cloud function service.
